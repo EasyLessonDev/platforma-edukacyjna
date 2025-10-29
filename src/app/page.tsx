@@ -1,11 +1,15 @@
+<<<<<<< HEAD
 "use client";
 
 import { useRouter } from "next/navigation";
+=======
+import HeroSection from './sections/HeroSection';
+import HeroMobileSection from './sections/HeroMobileSection';
+>>>>>>> 850b61a79b6b88995e0e96778a49e8c45a611e24
 
 export default function Home() {
-  const router = useRouter();
-
   return (
+<<<<<<< HEAD
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
       <div className="text-center px-8 pt-24 pb-16 max-w-4xl mx-auto">
@@ -62,6 +66,17 @@ export default function Home() {
             Intuicyjny interfejs pozwala rozpocząć naukę w kilka sekund
           </p>
         </div>
+=======
+    <div>
+      {/* Desktop Hero - ukryty na mobile */}
+      <div className="hidden lg:block">
+        <HeroSection />
+      </div>
+
+      {/* Mobile Hero - ukryty na desktop */}
+      <div className="block lg:hidden">
+        <HeroMobileSection />
+>>>>>>> 850b61a79b6b88995e0e96778a49e8c45a611e24
       </div>
     </div>
   );
