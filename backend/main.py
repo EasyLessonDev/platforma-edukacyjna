@@ -18,10 +18,10 @@ security_scheme = HTTPBearer()
 app.add_middleware(
     CORSMiddleware,
     origins = [
-    "http://localhost:3000",
-    "http://localhost:8000",
-    "https://platforma-edukacyjna-one.vercel.app",
-    "https://*.vercel.app",  # Dla preview deployments
+        "http://localhost:3000",
+        "http://localhost:8000",
+        "https://platforma-edukacyjna-one.vercel.app",
+        "https://*.vercel.app",  # Dla preview deployments
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -109,7 +109,7 @@ async def verify_email(verify_data: schemas.VerifyEmail, db: Session = Depends(g
     return {"access_token": access_token, "token_type": "bearer", "user": user}
 
 @app.post("/api/login")
-async def login(login_data: schemas.UserLogin, db: Session = Depends(get_db)):
+async def login(login_data: schemas.LoginData, db: Session = Depends(get_db)):  # ← POPRAWIONE!
     user = db.query(models.User).filter(
         (models.User.username == login_data.login) | (models.User.email == login_data.login)
     ).first()
@@ -152,9 +152,11 @@ async def resend_code(resend_data: schemas.ResendCode, db: Session = Depends(get
     # Wyślij email
     await email_service.send_verification_email(user.email, user.username, verification_code)
     
-    return {"message": "Nowy kod wysłany na email",
-            "verification_code": verification_code  # ← TYMCZASOWO!
-           }
+    # 🚧 DEV MODE - zwróć kod
+    return {
+        "message": "Nowy kod wysłany na email",
+        "verification_code": verification_code  # ← TYMCZASOWO!
+    }
 
 @app.post("/api/check-user")
 async def check_user(check_data: schemas.CheckUser, db: Session = Depends(get_db)):
