@@ -18,3 +18,4 @@ class User(Base):
     # Kod weryfikacyjny - bezpośrednio w tabeli user
     verification_code = Column(String(6), nullable=True)
     verification_code_expires = Column(DateTime, nullable=True)
+

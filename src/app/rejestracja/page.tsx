@@ -1,5 +1,5 @@
 "use client";
-
+import { registerUser, verifyEmail, resendVerificationCode, saveToken, saveUser } from "@/auth_api/api";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Loader2, Lock, Mail, User, X } from "lucide-react";
@@ -28,11 +28,7 @@ export default function Register() {
   const [acceptTerms, setAcceptTerms] = useState(false);
   
   // Verification modal state
-  const [showVerificationModal, setShowVerificationModal] = useState(false);
-  const [verificationCode, setVerificationCode] = useState("");
-  const [verificationError, setVerificationError] = useState("");
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [generatedCode, setGeneratedCode] = useState(""); // For demo purposes
+  const [generatedCode, setGeneratedCode] = useState(""); 
 
   // Email validation
   const validateEmail = (email: string) => {
@@ -111,69 +107,67 @@ export default function Register() {
     return isValid;
   };
 
-  // Handle registration
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
+// Handle registration - POŁĄCZENIE Z PRAWDZIWYM API
+// Logika: 
+// 1. Sprawdza czy email już istnieje
+// 2. Jeśli istnieje ale niezweryfikowany → wysyła nowy kod i redirect do weryfikacji
+// 3. Jeśli nowy → tworzy konto i redirect do weryfikacji
+const handleRegister = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-    if (!validateForm()) return;
+  if (!validateForm()) return;
 
-    setIsLoading(true);
+  setIsLoading(true);
+  setGeneralError("");
 
-    // Simulate API call
-    setTimeout(() => {
-      // Generate a random 6-digit code for demo
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
-      setGeneratedCode(code);
-      
-      // In production, send this code via email using your backend API
-      console.log("Verification code sent to:", formData.email);
-      console.log("Code:", code); // Remove in production
-      
-      setIsLoading(false);
-      setShowVerificationModal(true);
-    }, 1500);
-  };
+  try {
+    // Wywołanie API rejestracji
+    const response = await registerUser({
+      username: formData.fullName,
+      email: formData.email,
+      password: formData.password,
+      password_confirm: formData.confirmPassword,
+    });
 
-  // Handle verification
-  const handleVerification = async (e: React.FormEvent) => {
-    e.preventDefault();
+    console.log("✅ Użytkownik zarejestrowany! ID:", response.user.id);
+    console.log("📧 Kod wysłany na email:", formData.email);
     
-    if (!verificationCode.trim()) {
-      setVerificationError("Wprowadź kod weryfikacyjny");
-      return;
-    }
+    // Redirect do weryfikacji
+    router.push(`/weryfikacja?userId=${response.user.id}&email=${encodeURIComponent(formData.email)}`);
 
-    if (verificationCode.length !== 6) {
-      setVerificationError("Kod musi mieć 6 cyfr");
-      return;
-    }
+  } catch (error: any) {
+    setIsLoading(false);
 
-    setIsVerifying(true);
-    setVerificationError("");
+    // Sprawdź czy to błąd "email zajęty"
+    if (error.message.includes("Email zajęty")) {
+      // Email istnieje - sprawdź czy zweryfikowany
+      try {
+        const checkResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/check-user`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: formData.email }),
+        });
+        
+        const checkData = await checkResponse.json();
 
-    // Simulate API verification call
-    setTimeout(() => {
-      // In production, verify with backend
-      if (verificationCode === generatedCode) {
-        // Success - redirect to dashboard
-        router.push("/dashboard");
-      } else {
-        setVerificationError("Nieprawidłowy kod weryfikacyjny");
-        setIsVerifying(false);
+        if (checkData.verified) {
+          // Konto zweryfikowane - każ się zalogować
+          setGeneralError("To konto już istnieje. Przejdź do logowania.");
+        } else {
+          // Konto niezweryfikowane - wysłano nowy kod
+          console.log("📧 Konto istnieje ale niezweryfikowane. Nowy kod wysłany.");
+          router.push(`/weryfikacja?userId=${checkData.user_id}&email=${encodeURIComponent(formData.email)}`);
+        }
+      } catch (checkError) {
+        setGeneralError("Email już zajęty");
       }
-    }, 1000);
-  };
-
-  // Resend verification code
-  const handleResendCode = () => {
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    setGeneratedCode(code);
-    console.log("New verification code:", code); // Remove in production
-    setVerificationError("");
+    } else {
+      setGeneralError(error.message || "Błąd rejestracji");
+    }
     
-    // Show success message
-    alert("Nowy kod został wysłany na Twój email");
-  };
+    console.error("❌ Błąd rejestracji:", error);
+  }
+};
 
   return (
     <>
@@ -410,103 +404,6 @@ export default function Register() {
           </div>
         </form>
       </div>
-
-      {/* Verification Modal */}
-      {showVerificationModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-5 z-50">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 relative">
-            {/* Close button */}
-            <button
-              onClick={() => setShowVerificationModal(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <X className="w-6 h-6" />
-            </button>
-
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Mail className="w-8 h-8 text-green-600" />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                Zweryfikuj email
-              </h2>
-              <p className="text-gray-600 text-sm">
-                Wysłaliśmy kod weryfikacyjny na adres:
-              </p>
-              <p className="text-green-600 font-semibold mt-1">
-                {formData.email}
-              </p>
-            </div>
-
-            <form onSubmit={handleVerification}>
-              {/* Verification Error */}
-              {verificationError && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm text-center">
-                  {verificationError}
-                </div>
-              )}
-
-              {/* Demo info - remove in production */}
-              <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg mb-4 text-sm text-center">
-                <p className="font-semibold">Demo - Kod: {generatedCode}</p>
-                <p className="text-xs mt-1">Usuń to w produkcji</p>
-              </div>
-
-              {/* Verification Code Input */}
-              <div className="mb-6">
-                <label className="block mb-2 text-sm font-medium text-gray-700 text-center">
-                  Wprowadź 6-cyfrowy kod
-                </label>
-                <input
-                  type="text"
-                  maxLength={6}
-                  value={verificationCode}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, "");
-                    setVerificationCode(value);
-                    setVerificationError("");
-                  }}
-                  placeholder="000000"
-                  className="w-full px-4 py-3 text-center text-2xl font-bold text-gray-700 bg-white border-2 border-gray-200 rounded-lg outline-none focus:border-green-500 transition-colors duration-200 tracking-widest"
-                />
-              </div>
-
-              {/* Verify Button */}
-              <button
-                type="submit"
-                disabled={isVerifying}
-                className={`w-full py-3 px-4 text-white font-semibold rounded-lg transition-all duration-200 transform mb-4
-                  ${
-                    isVerifying
-                      ? "bg-gray-400 cursor-not-allowed"
-                      : "bg-green-500 hover:bg-green-600 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0"
-                  }`}
-              >
-                {isVerifying ? (
-                  <div className="flex items-center justify-center gap-3">
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    <span>Weryfikowanie...</span>
-                  </div>
-                ) : (
-                  "Zweryfikuj"
-                )}
-              </button>
-
-              {/* Resend Code */}
-              <div className="text-center text-sm text-gray-600">
-                Nie otrzymałeś kodu?{" "}
-                <button
-                  type="button"
-                  onClick={handleResendCode}
-                  className="text-green-600 font-semibold hover:text-green-700 hover:underline transition-colors duration-200"
-                >
-                  Wyślij ponownie
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </>
   );
 }

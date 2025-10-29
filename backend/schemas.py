@@ -32,3 +32,11 @@ class AuthResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+
+class ResendCode(BaseModel):
+    """Schema dla ponownego wysłania kodu weryfikacyjnego"""
+    user_id: int
+
+class CheckUser(BaseModel):
+    """Schema do sprawdzania czy user istnieje"""
+    email: EmailStr

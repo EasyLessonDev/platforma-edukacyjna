@@ -1,3 +1,26 @@
+"""
+EMAIL SERVICE - Wysyłanie emaili przez Resend
+=============================================
+
+Cel: Wysyła emaile weryfikacyjne z 6-cyfrowym kodem
+
+Funkcje:
+- send_verification_email() - wysyła kod weryfikacyjny na email użytkownika
+
+Konfiguracja:
+- RESEND_API_KEY w .env - klucz API z resend.com
+- FROM_EMAIL w .env - adres nadawcy (onboarding@resend.dev dla testów)
+
+Ważne:
+- Dla onboarding@resend.dev możesz wysyłać TYLKO na swój zweryfikowany email
+- Dla własnej domeny możesz wysyłać wszędzie
+- Kod HTML jest responsywny i ładny
+
+Powiązane pliki:
+- backend/config.py (pobiera ustawienia z .env)
+- backend/main.py (wywołuje send_verification_email)
+"""
+
 import resend
 from config import get_settings
 
@@ -5,6 +28,17 @@ settings = get_settings()
 resend.api_key = settings.resend_api_key
 
 async def send_verification_email(email: str, username: str, code: str) -> bool:
+    """
+    Wysyła email weryfikacyjny z 6-cyfrowym kodem
+    
+    Args:
+        email: adres email odbiorcy
+        username: nazwa użytkownika (do personalizacji)
+        code: 6-cyfrowy kod weryfikacyjny
+    
+    Returns:
+        True jeśli wysłano, False jeśli błąd
+    """
     try:
         params = {
             "from": settings.from_email,
@@ -46,8 +80,19 @@ async def send_verification_email(email: str, username: str, code: str) -> bool:
             </html>
             """
         }
-        resend.Emails.send(params)
+        
+        # DEBUGOWANIE - wypisz co wysyłasz
+        print(f"📧 Próba wysłania emaila do: {email}")
+        print(f"🔑 Kod weryfikacyjny: {code}")
+        print(f"📤 From: {settings.from_email}")
+        
+        # Wyślij email
+        response = resend.Emails.send(params)
+        
+        print(f"✅ Email wysłany pomyślnie! Response: {response}")
         return True
+        
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"❌ BŁĄD wysyłania emaila: {e}")
+        print(f"❌ Typ błędu: {type(e).__name__}")
         return False

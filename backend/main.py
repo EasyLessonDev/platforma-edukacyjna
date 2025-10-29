@@ -11,8 +11,6 @@ import email_service
 from database import engine, get_db
 from config import get_settings
 
-models.Base.metadata.create_all(bind=engine)
-
 app = FastAPI(title="Education Platform API")
 settings = get_settings()
 security_scheme = HTTPBearer()
@@ -105,6 +103,65 @@ async def login(login_data: schemas.UserLogin, db: Session = Depends(get_db)):
     )
     
     return {"access_token": access_token, "token_type": "bearer", "user": user}
+
+@app.post("/api/resend-code")
+async def resend_code(resend_data: schemas.ResendCode, db: Session = Depends(get_db)):
+    """
+    Endpoint do ponownego wysłania kodu weryfikacyjnego
+    Używany gdy użytkownik nie otrzymał lub stracił kod
+    """
+    user = db.query(models.User).filter(models.User.id == resend_data.user_id).first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User nie znaleziony")
+    
+    if user.is_active:
+        raise HTTPException(status_code=400, detail="Konto już zweryfikowane")
+    
+    # Generuj nowy kod
+    verification_code = security.generate_verification_code()
+    code_expires = datetime.utcnow() + timedelta(minutes=15)
+    
+    user.verification_code = verification_code
+    user.verification_code_expires = code_expires
+    db.commit()
+    
+    # Wyślij email
+    await email_service.send_verification_email(user.email, user.username, verification_code)
+    
+    return {"message": "Nowy kod wysłany na email"}
+
+@app.post("/api/check-user")
+async def check_user(check_data: schemas.CheckUser, db: Session = Depends(get_db)):
+    """
+    Sprawdza czy użytkownik istnieje i czy jest zweryfikowany
+    Jeśli istnieje ale niezweryfikowany - wysyła nowy kod
+    """
+    user = db.query(models.User).filter(models.User.email == check_data.email).first()
+    
+    if not user:
+        return {"exists": False, "verified": False}
+    
+    if user.is_active:
+        return {"exists": True, "verified": True}
+    
+    # User istnieje ale niezweryfikowany - wyślij nowy kod
+    verification_code = security.generate_verification_code()
+    code_expires = datetime.utcnow() + timedelta(minutes=15)
+    
+    user.verification_code = verification_code
+    user.verification_code_expires = code_expires
+    db.commit()
+    
+    # Wyślij email
+    await email_service.send_verification_email(user.email, user.username, verification_code)
+    
+    return {
+        "exists": True, 
+        "verified": False, 
+        "user_id": user.id,
+        "message": "Nowy kod wysłany na email"
+    }
 
 if __name__ == "__main__":
     import uvicorn

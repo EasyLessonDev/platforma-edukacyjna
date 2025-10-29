@@ -42,7 +42,7 @@ const Header = () => {
             </Link>
 
             {/* Przycisk Zarejestruj się (zielony, wyróżniony) */}
-            <Link href="/register">
+            <Link href="/rejestracja">
               <button className="px-5 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-all duration-200 shadow-md hover:shadow-lg">
                 Zarejestruj się
               </button>
