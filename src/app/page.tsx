@@ -58,7 +58,7 @@ export default function Home() {
           </button>
           
           <button 
-            onClick={() => router.push('/rejestruj')}
+            onClick={() => router.push('/rejestracja')}
             style={{
             padding: '10px 28px',
             fontSize: '1rem',
