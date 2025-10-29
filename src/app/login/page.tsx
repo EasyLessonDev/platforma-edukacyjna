@@ -1,97 +1,232 @@
-'use client';
+"use client";
 
-import { useRouter } from 'next/navigation';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Eye, EyeOff, Loader2, Lock, Mail } from "lucide-react";
+import Link from "next/link";
 
 export default function Login() {
   const router = useRouter();
 
-  const handleLogin = () => {
-    router.push('/dashboard');
+  // State management
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
+  const [errors, setErrors] = useState({
+    email: "",
+    password: "",
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [generalError, setGeneralError] = useState("");
+
+  // Email validation
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  // Handle input changes
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+
+    // Clear error when user starts typing
+    setErrors((prev) => ({
+      ...prev,
+      [name]: "",
+    }));
+    setGeneralError("");
+  };
+
+  // Form validation
+  const validateForm = () => {
+    let isValid = true;
+    const newErrors = { email: "", password: "" };
+
+    if (!formData.email) {
+      newErrors.email = "Email jest wymagany";
+      isValid = false;
+    } else if (!validateEmail(formData.email)) {
+      newErrors.email = "Nieprawidłowy format email";
+      isValid = false;
+    }
+
+    if (!formData.password) {
+      newErrors.password = "Hasło jest wymagane";
+      isValid = false;
+    } else if (formData.password.length < 6) {
+      newErrors.password = "Hasło musi mieć co najmniej 6 znaków";
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
+  };
+
+  // Handle login
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validateForm()) return;
+
+    setIsLoading(true);
+
+    // Simulate API call
+    setTimeout(() => {
+      // For demo purposes - in real app, this would be an actual API call
+      if (
+        formData.email === "test@example.com" &&
+        formData.password === "password123"
+      ) {
+        router.push("/dashboard");
+      } else {
+        setGeneralError("Nieprawidłowy email lub hasło");
+        setIsLoading(false);
+      }
+    }, 1500);
+  };
+
+  // Handle registration redirect
+  const handleRegister = () => {
+    router.push("/rejestracja");
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-    }}>
-      <div style={{
-        backgroundColor: 'white',
-        padding: '3rem',
-        borderRadius: '16px',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
-        width: '90%',
-        maxWidth: '400px'
-      }}>
-        <h1 style={{
-          fontSize: '2rem',
-          marginBottom: '2rem',
-          textAlign: 'center',
-          color: '#333'
-        }}>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-200 via-green-300 to-emerald-400 p-5">
+      {/* Logo/Brand Section */}
+      <div className="mb-8 text-center">
+        <h2 className="text-white text-2xl font-semibold">Witaj ponownie!</h2>
+      </div>
+
+      {/* Login Form */}
+      <form
+        onSubmit={handleLogin}
+        className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md"
+      >
+        <h1 className="text-3xl font-bold text-center text-gray-800 mb-2">
           Zaloguj się
         </h1>
-        
-        <input
-          type="email"
-          placeholder="Email"
-          style={{
-            width: '100%',
-            padding: '12px',
-            marginBottom: '1rem',
-            fontSize: '1rem',
-            border: '2px solid #e0e0e0',
-            borderRadius: '8px',
-            outline: 'none',
-            transition: 'border 0.2s'
-          }}
-        />
-        
-        <input
-          type="password"
-          placeholder="Hasło"
-          style={{
-            width: '100%',
-            padding: '12px',
-            marginBottom: '1.5rem',
-            fontSize: '1rem',
-            border: '2px solid #e0e0e0',
-            borderRadius: '8px',
-            outline: 'none',
-            transition: 'border 0.2s'
-          }}
-        />
-        
+
+        <p className="text-center text-gray-600 mb-6">
+          Zaloguj się, aby kontynuować
+        </p>
+
+        {/* General Error Message */}
+        {generalError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm text-center">
+            {generalError}
+          </div>
+        )}
+
+        {/* Email Input */}
+        <div className="mb-4">
+          <label className="block mb-2 text-sm font-medium text-gray-700">
+            Email
+          </label>
+          <div className="relative">
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="nazwa@example.com"
+              className={`w-full pl-10 pr-4 py-3 text-gray-700 bg-white border-2 rounded-lg outline-none transition-colors duration-200
+                ${
+                  errors.email
+                    ? "border-red-500 bg-red-50 focus:border-red-500"
+                    : "border-gray-200 focus:border-green-500"
+                }`}
+            />
+            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+              <Mail className="w-5 h-5" />
+            </span>
+          </div>
+          {errors.email && (
+            <span className="text-red-500 text-xs mt-1 block">
+              {errors.email}
+            </span>
+          )}
+        </div>
+
+        {/* Password Input */}
+        <div className="mb-6">
+          <label className="block mb-2 text-sm font-medium text-gray-700">
+            Hasło
+          </label>
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="••••••••"
+              className={`w-full pl-10 pr-12 py-3 text-gray-700 bg-white border-2 rounded-lg outline-none transition-colors duration-200
+                ${
+                  errors.password
+                    ? "border-red-500 bg-red-50 focus:border-red-500"
+                    : "border-gray-200 focus:border-green-500"
+                }`}
+            />
+            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+              <Lock className="w-5 h-5" />
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+              title={showPassword ? "Ukryj hasło" : "Pokaż hasło"}
+            >
+              {showPassword ? (
+                <Eye className="w-5 h-5" />
+              ) : (
+                <EyeOff className="w-5 h-5" />
+              )}
+            </button>
+          </div>
+          {errors.password && (
+            <span className="text-red-500 text-xs mt-1 block">
+              {errors.password}
+            </span>
+          )}
+        </div>
+
+        {/* Login Button */}
         <button
-          onClick={handleLogin}
-          style={{
-            width: '100%',
-            padding: '12px',
-            fontSize: '1.1rem',
-            fontWeight: '600',
-            color: 'white',
-            backgroundColor: '#667eea',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            transition: 'all 0.2s'
-          }}
-          onMouseOver={(e) => {
-            (e.target as HTMLButtonElement).style.backgroundColor = '#5568d3';
-            (e.target as HTMLButtonElement).style.transform = 'translateY(-2px)';
-          }}
-          onMouseOut={(e) => {
-            (e.target as HTMLButtonElement).style.backgroundColor = '#667eea';
-            (e.target as HTMLButtonElement).style.transform = 'translateY(0)';
-          }}
+          type="submit"
+          disabled={isLoading}
+          className={`w-full py-3 px-4 text-white font-semibold rounded-lg transition-all duration-200 transform mb-5
+            ${
+              isLoading
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-green-500 hover:bg-green-600 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0"
+            }`}
         >
-          Zaloguj
+          {isLoading ? (
+            <div className="flex items-center justify-center gap-3">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>Logowanie...</span>
+            </div>
+          ) : (
+            "Zaloguj"
+          )}
         </button>
-      </div>
+
+        {/* Sign Up Link */}
+        <div className="text-center text-gray-600">
+          Nie masz konta?{" "}
+          <Link
+            href="/rejestracja"
+            className="text-green-600 font-semibold hover:text-green-700 hover:underline transition-colors duration-200"
+          >
+            Zarejestruj się
+          </Link>
+        </div>
+      </form>
     </div>
   );
 }
