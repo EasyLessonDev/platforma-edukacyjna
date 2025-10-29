@@ -32,26 +32,38 @@ app.add_middleware(
 async def root():
     return {"message": "Education Platform API", "version": "1.0.0"}
 
-@app.post("/api/register", status_code=status.HTTP_201_CREATED)
-async def register(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
-    if user_data.password != user_data.password_confirm:
-        raise HTTPException(status_code=400, detail="Hasła nie są identyczne")
-    
-    if db.query(models.User).filter(models.User.username == user_data.username).first():
-        raise HTTPException(status_code=400, detail="Username zajęty")
-    
+@app.post("/api/register", response_model=schemas.RegisterResponse)
+async def register(user_data: schemas.RegisterUser, db: Session = Depends(get_db)):
+    """
+    Rejestracja nowego użytkownika
+    1. Sprawdza czy email/username już istnieje
+    2. Hashuje hasło
+    3. Generuje 6-cyfrowy kod weryfikacyjny
+    4. Wysyła email z kodem
+    5. Zwraca dane użytkownika
+    """
+    # Sprawdź czy email już istnieje
     if db.query(models.User).filter(models.User.email == user_data.email).first():
         raise HTTPException(status_code=400, detail="Email zajęty")
     
+    # Sprawdź czy username już istnieje
+    if db.query(models.User).filter(models.User.username == user_data.username).first():
+        raise HTTPException(status_code=400, detail="Nazwa użytkownika zajęta")
+    
+    # Hashuj hasło
+    hashed_password = security.hash_password(user_data.password)
+    
+    # Generuj kod weryfikacyjny (6 cyfr)
     verification_code = security.generate_verification_code()
     code_expires = datetime.utcnow() + timedelta(minutes=15)
     
+    # Stwórz użytkownika
     new_user = models.User(
         username=user_data.username,
         email=user_data.email,
-        hashed_password=security.get_password_hash(user_data.password),
+        hashed_password=hashed_password,
         full_name=user_data.full_name,
-        is_active=False,
+        is_active=False,  # Niezweryfikowany
         verification_code=verification_code,
         verification_code_expires=code_expires
     )
@@ -60,9 +72,15 @@ async def register(user_data: schemas.UserCreate, db: Session = Depends(get_db))
     db.commit()
     db.refresh(new_user)
     
+    # Wyślij email z kodem weryfikacyjnym
     await email_service.send_verification_email(new_user.email, new_user.username, verification_code)
     
-    return {"user": new_user, "message": "Kod wysłany na email"}
+    # 🚧 DEV MODE - zwróć kod w response (usuń przed produkcją!)
+    return {
+        "user": new_user, 
+        "message": "Użytkownik zarejestrowany. Sprawdź email.",
+        "verification_code": verification_code  # ← TYMCZASOWO!
+    }
 
 @app.post("/api/verify-email")
 async def verify_email(verify_data: schemas.VerifyEmail, db: Session = Depends(get_db)):
@@ -134,7 +152,9 @@ async def resend_code(resend_data: schemas.ResendCode, db: Session = Depends(get
     # Wyślij email
     await email_service.send_verification_email(user.email, user.username, verification_code)
     
-    return {"message": "Nowy kod wysłany na email"}
+    return {"message": "Nowy kod wysłany na email",
+            "verification_code": verification_code  # ← TYMCZASOWO!
+           }
 
 @app.post("/api/check-user")
 async def check_user(check_data: schemas.CheckUser, db: Session = Depends(get_db)):

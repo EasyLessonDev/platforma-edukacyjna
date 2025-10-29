@@ -1,3 +1,272 @@
+# 🚧 DEV MODE - ZMIANY DO USUNIĘCIA PRZED PRODUKCJĄ
+
+## ⚠️ WAŻNE: 
+Te zmiany zostały dodane TYMCZASOWO aby pokazywać kod weryfikacyjny w alertcie, ponieważ Resend z `onboarding@resend.dev` może wysyłać tylko na email `easylesson.dev@gmail.com`.
+
+**JAK SKONFIGURUJESZ DOMENĘ W RESEND - USUŃ TE ZMIANY!**
+
+---
+
+# 📁 PLIK 1: `backend/main.py`
+
+## 🔴 ZMIANA #1 - Endpoint `/api/register` (linia ~55-60)
+
+### ❌ BYŁO (PRODUKCYJNE):
+```python
+# Wyślij email z kodem weryfikacyjnym
+await email_service.send_verification_email(new_user.email, new_user.username, verification_code)
+
+return {"user": new_user, "message": "Użytkownik zarejestrowany. Sprawdź email."}
+```
+
+### ✅ JEST TERAZ (DEV MODE):
+```python
+# Wyślij email z kodem weryfikacyjnym
+await email_service.send_verification_email(new_user.email, new_user.username, verification_code)
+
+# 🚧 DEV MODE - zwróć kod w response (usuń przed produkcją!)
+return {
+    "user": new_user, 
+    "message": "Użytkownik zarejestrowany. Sprawdź email.",
+    "verification_code": verification_code  # ← USUŃ TĘ LINIĘ!
+}
+```
+
+### 🔧 CO ZROBIĆ PRZED PRODUKCJĄ:
+**USUŃ** linię:
+```python
+    "verification_code": verification_code  # ← USUŃ!
+```
+
+**Zostaw tylko:**
+```python
+return {
+    "user": new_user, 
+    "message": "Użytkownik zarejestrowany. Sprawdź email."
+}
+```
+
+---
+
+## 🔴 ZMIANA #2 - Endpoint `/api/resend-code` (linia ~130)
+
+### ❌ BYŁO (PRODUKCYJNE):
+```python
+await email_service.send_verification_email(user.email, user.username, verification_code)
+
+return {"message": "Nowy kod wysłany na email"}
+```
+
+### ✅ JEST TERAZ (DEV MODE):
+```python
+await email_service.send_verification_email(user.email, user.username, verification_code)
+
+# 🚧 DEV MODE - zwróć kod
+return {
+    "message": "Nowy kod wysłany na email",
+    "verification_code": verification_code  # ← USUŃ TĘ LINIĘ!
+}
+```
+
+### 🔧 CO ZROBIĆ PRZED PRODUKCJĄ:
+**USUŃ** linię:
+```python
+    "verification_code": verification_code  # ← USUŃ!
+```
+
+**Zostaw tylko:**
+```python
+return {"message": "Nowy kod wysłany na email"}
+```
+
+---
+
+# 📁 PLIK 2: `src/app/rejestracja/page.tsx`
+
+## 🔴 ZMIANA #3 - Funkcja `handleRegister` (linia ~155)
+
+### ❌ BYŁO (PRODUKCYJNE):
+```typescript
+console.log("✅ Użytkownik zarejestrowany! ID:", response.user.id);
+console.log("📧 Kod wysłany na email:", formData.email);
+
+// Redirect do weryfikacji
+router.push(`/weryfikacja?userId=${response.user.id}&email=${encodeURIComponent(formData.email)}`);
+```
+
+### ✅ JEST TERAZ (DEV MODE):
+```typescript
+console.log("✅ Użytkownik zarejestrowany! ID:", response.user.id);
+console.log("📧 Kod wysłany na email:", formData.email);
+
+// 🚧 DEV MODE - pokaż kod jeśli jest w response
+if ((response as any).verification_code) {
+  alert(`🔑 KOD WERYFIKACYJNY: ${(response as any).verification_code}\n\nSkopiuj ten kod!`);
+}
+
+// Redirect do weryfikacji
+router.push(`/weryfikacja?userId=${response.user.id}&email=${encodeURIComponent(formData.email)}`);
+```
+
+### 🔧 CO ZROBIĆ PRZED PRODUKCJĄ:
+**USUŃ** te 4 linie:
+```typescript
+// 🚧 DEV MODE - pokaż kod jeśli jest w response
+if ((response as any).verification_code) {
+  alert(`🔑 KOD WERYFIKACYJNY: ${(response as any).verification_code}\n\nSkopiuj ten kod!`);
+}
+```
+
+---
+
+# 📁 PLIK 3: `src/app/weryfikacja/page.tsx`
+
+## 🔴 ZMIANA #4 - Funkcja `handleResendCode` (linia ~183)
+
+### ❌ BYŁO (PRODUKCYJNE):
+```typescript
+try {
+  await resendVerificationCode(parseInt(userId!));
+  
+  setResendMessage("✅ Nowy kod wysłany na email!");
+  setResendCooldown(60);
+  console.log("📧 Kod ponownie wysłany");
+
+  // Wyczyść wiadomość po 5 sekundach
+  setTimeout(() => setResendMessage(""), 5000);
+
+} catch (error: any) {
+  setError(error.message || "Błąd przy wysyłaniu kodu");
+  console.error("❌ Błąd resend:", error);
+} finally {
+  setResendLoading(false);
+}
+```
+
+### ✅ JEST TERAZ (DEV MODE):
+```typescript
+try {
+  const data = await resendVerificationCode(parseInt(userId!));
+  
+  setResendMessage("✅ Nowy kod wysłany na email!");
+  
+  // 🚧 DEV MODE - pokaż kod jeśli jest
+  if ((data as any).verification_code) {
+    alert(`🔑 NOWY KOD: ${(data as any).verification_code}`);
+  }
+  
+  setResendCooldown(60);
+  console.log("📧 Kod ponownie wysłany");
+
+  // Wyczyść wiadomość po 5 sekundach
+  setTimeout(() => setResendMessage(""), 5000);
+
+} catch (error: any) {
+  setError(error.message || "Błąd przy wysyłaniu kodu");
+  console.error("❌ Błąd resend:", error);
+} finally {
+  setResendLoading(false);
+}
+```
+
+### 🔧 CO ZROBIĆ PRZED PRODUKCJĄ:
+**USUŃ** te 4 linie:
+```typescript
+  // 🚧 DEV MODE - pokaż kod jeśli jest
+  if ((data as any).verification_code) {
+    alert(`🔑 NOWY KOD: ${(data as any).verification_code}`);
+  }
+```
+
+**ZMIEŃ:**
+```typescript
+const data = await resendVerificationCode(parseInt(userId!));
+```
+
+**NA:**
+```typescript
+await resendVerificationCode(parseInt(userId!));
+```
+
+---
+
+# ✅ CHECKLIST - PRZED PRODUKCJĄ (GDY DOMENA GOTOWA):
+
+## Krok 1: Skonfiguruj domenę w Resend
+- [ ] Kupiłem domenę
+- [ ] Dodałem rekordy DNS
+- [ ] Domena zweryfikowana w Resend
+- [ ] Zaktualizowałem `FROM_EMAIL` w Render na `noreply@twoja-domena.xyz`
+
+## Krok 2: Usuń DEV MODE z kodu
+
+### Backend (`backend/main.py`):
+- [ ] Usunąłem `"verification_code": verification_code` z `/api/register` (linia ~60)
+- [ ] Usunąłem `"verification_code": verification_code` z `/api/resend-code` (linia ~135)
+
+### Frontend (`src/app/rejestracja/page.tsx`):
+- [ ] Usunąłem blok `if ((response as any).verification_code)` z `handleRegister` (linia ~158)
+
+### Frontend (`src/app/weryfikacja/page.tsx`):
+- [ ] Usunąłem blok `if ((data as any).verification_code)` z `handleResendCode` (linia ~185)
+- [ ] Zmieniłem `const data = await` na `await` w `handleResendCode`
+
+## Krok 3: Commit i deploy
+```bash
+git add backend/main.py src/app/rejestracja/page.tsx src/app/weryfikacja/page.tsx
+git commit -m "Remove DEV MODE - production ready with custom domain"
+git push origin main
+```
+
+## Krok 4: Test
+- [ ] Zarejestrowałem się z dowolnym emailem
+- [ ] Email przyszedł poprawnie (nie ma alertu z kodem!)
+- [ ] Weryfikacja działa
+- [ ] Wszystko działa jak produkcja
+
+---
+
+# 🔍 JAK SZYBKO ZNALEŹĆ TE ZMIANY:
+
+## W VS Code:
+1. Naciśnij `Ctrl + Shift + F` (Search w wszystkich plikach)
+2. Szukaj: `DEV MODE`
+3. Znajdziesz wszystkie miejsca do usunięcia!
+
+## Lub szukaj komentarzy:
+```
+🚧 DEV MODE
+```
+
+---
+
+# 📝 NOTATKI:
+
+**Data dodania DEV MODE:** 29 października 2025
+
+**Powód:** Resend z `onboarding@resend.dev` może wysyłać tylko na `easylesson.dev@gmail.com`. 
+Tymczasowe rozwiązanie - pokazywanie kodu w alertcie dla testów z dowolnymi emailami.
+
+**Do usunięcia:** Gdy domena będzie zweryfikowana w Resend i `FROM_EMAIL` zmieniony na `noreply@twoja-domena.xyz`
+
+---
+
+# ⚠️ DLACZEGO TO WAŻNE:
+
+**Bezpieczeństwo:** Pokazywanie kodu weryfikacyjnego w response API to **OGROMNA DZIURA BEZPIECZEŃSTWA**!
+
+Ktoś mógłby:
+- Zarejestrować się cudzym emailem
+- Od razu zobaczyć kod
+- Zweryfikować konto bez dostępu do emaila
+
+**Dlatego to TYLKO dla developmentu, NIGDY dla produkcji!**
+
+---
+
+**Zachowaj ten plik i usuń DEV MODE jak tylko skonfigurujesz domenę!** 🔒
+
+
 # 🚀 PRZEWODNIK: Konfiguracja Domeny z Resend
 
 ## 📋 CZEGO POTRZEBUJESZ:
