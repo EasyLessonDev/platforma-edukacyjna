@@ -62,7 +62,7 @@ export default function ProblemsSection() {
       {/* LEWE DEKORACJE MATEMATYCZNE */}
 <div className="absolute left-0 top-0 w-full h-full pointer-events-none opacity-20">
   {/* Kontener ograniczający - max-w-7xl + wyśrodkowany */}
-  <div className="relative max-w-7xl mx-auto h-full">
+  <div className="relative max-w-screen-2xl mx-auto h-full">
   
     {/* Wzór 1: e^(iπ) + 1 = 0 - ŻÓŁTY */}
     <svg className="absolute left-8 top-20 rotate-12" width="180" height="80" viewBox="0 0 180 80">
