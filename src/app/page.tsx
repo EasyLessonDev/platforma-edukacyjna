@@ -1,5 +1,6 @@
 import HeroSection from './sections/HeroSection';
 import HeroMobileSection from './sections/HeroMobileSection';
+import ProblemsAndSolutionsSection from './sections/ProblemsSection';
 
 export default function Home() {
   return (
@@ -13,6 +14,9 @@ export default function Home() {
       <div className="block lg:hidden">
         <HeroMobileSection />
       </div>
+
+      {/* Sekcja problemów i rozwiązań - pokazuje się na wszystkich urządzeniach */}
+      <ProblemsAndSolutionsSection />
     </div>
   );
 }
