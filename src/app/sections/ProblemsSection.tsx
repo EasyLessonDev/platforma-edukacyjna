@@ -60,7 +60,7 @@ export default function ProblemsSection() {
       />
 
       {/* LEWE DEKORACJE MATEMATYCZNE */}
-<div className="absolute left-0 top-0 w-full h-full pointer-events-none opacity-20">
+<div className="absolute left-0 top-0 w-full h-full pointer-events-none opacity-40">
   {/* Kontener ograniczający - max-w-7xl + wyśrodkowany */}
   <div className="relative max-w-screen-2xl mx-auto h-full">
   
@@ -99,7 +99,7 @@ export default function ProblemsSection() {
 </div>
 
 {/* PRAWE DEKORACJE MATEMATYCZNE */}
-<div className="absolute right-0 top-0 w-full h-full pointer-events-none opacity-20">
+<div className="absolute right-0 top-0 w-full h-full pointer-events-none opacity-40">
   {/* Kontener ograniczający - max-w-7xl + wyśrodkowany */}
   <div className="relative max-w-screen-2xl mx-auto h-full">
   
