@@ -17,7 +17,7 @@ security_scheme = HTTPBearer()
 
 app.add_middleware(
     CORSMiddleware,
-    origins = [
+    allow_origins = [
         "http://localhost:3000",
         "http://localhost:8000",
         "https://platforma-edukacyjna-one.vercel.app",
