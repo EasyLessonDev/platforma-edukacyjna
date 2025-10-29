@@ -40,3 +40,9 @@ class ResendCode(BaseModel):
 class CheckUser(BaseModel):
     """Schema do sprawdzania czy user istnieje"""
     email: EmailStr
+
+class RegisterResponse(BaseModel):
+    """Response po rejestracji"""
+    user: UserResponse
+    message: str
+    verification_code: str | None = None  # Opcjonalny (DEV MODE)
