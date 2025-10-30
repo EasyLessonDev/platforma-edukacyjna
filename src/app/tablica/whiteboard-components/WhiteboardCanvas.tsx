@@ -509,7 +509,8 @@ const drawGrid = (ctx: CanvasRenderingContext2D, width: number, height: number) 
     ctx.beginPath();
     
     let started = false;
-    const step = 0.02 / viewport.scale;
+    const step = Math.max(0.05, 1 / (viewport.scale * 100));
+
     
     for (let worldX = -func.xRange; worldX <= func.xRange; worldX += step) {
       try {
@@ -735,8 +736,8 @@ const inverseTransformPoint = (point: Point): Point => {
       const dx = screenX - lastPanPoint.x;
       const dy = screenY - lastPanPoint.y;
       
-      // WOLNIEJSZE przesuwanie myszką (mnożymy przez mniejszą wartość)
-      const mousePanSpeed = 1; // Dostosuj tę wartość (0.1 = bardzo wolno, 1.0 = jak było)
+      // WOLNIEJSZE przesuwanie myszką 
+      const mousePanSpeed = 1; // Dostosuj tę wartość
       
       const newViewport = constrainViewport({
         ...viewport,
@@ -886,9 +887,9 @@ const inverseTransformPoint = (point: Point): Point => {
   }, []);
   
   const handleGenerateFunctionRef = useRef((expression: string) => {
-    const xRange = 1000;
-    const yRange = 1000;
-    
+    const xRange = 5 / viewport.scale; 
+    const yRange = 5 / viewport.scale;
+
     const newFunction: FunctionPlot = {
       id: Date.now().toString(),
       type: 'function',
