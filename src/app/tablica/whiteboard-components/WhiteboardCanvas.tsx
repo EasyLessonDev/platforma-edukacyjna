@@ -226,34 +226,37 @@ export function WhiteboardCanvas({ className = '' }: WhiteboardCanvasProps) {
         const scaleChange = 1 + (delta > 0 ? zoomIntensity : -zoomIntensity);
         
         const oldScale = viewport.scale;
-        const newScale = Math.min(Math.max(oldScale * scaleChange, 0.2), 5.0); // Zwiększony max zoom do 500%
+        const newScale = Math.min(Math.max(oldScale * scaleChange, 0.2), 5.0);
         
         const centerX = rect.width / 2;
         const centerY = rect.height / 2;
         const mouseRelX = mouseX - centerX;
         const mouseRelY = mouseY - centerY;
         
-        const worldX = viewport.x + mouseRelX / oldScale;
-        const worldY = viewport.y + mouseRelY / oldScale;
+        // POPRAWKA: 100px = 1 jednostka
+        const worldX = viewport.x + mouseRelX / (oldScale * 100);  // ✅ DOBRZE
+        const worldY = viewport.y + mouseRelY / (oldScale * 100);  // ✅ DOBRZE
         
-        const newViewportX = worldX - mouseRelX / newScale;
-        const newViewportY = worldY - mouseRelY / newScale;
+        const newViewportX = worldX - mouseRelX / (newScale * 100);  // ✅ DOBRZE
+        const newViewportY = worldY - mouseRelY / (newScale * 100);  // ✅ DOBRZE
         
         setViewport({
           x: newViewportX,
           y: newViewportY,
           scale: newScale
         });
-      } else {
+      }
+      else {
         // SCROLL/PAN (dwa palce: w lewo/prawo/góra/dół)
         const panSpeed = 1.0;
         const dx = e.deltaX * panSpeed;
         const dy = e.deltaY * panSpeed;
         
+
         setViewport(prev => ({
           ...prev,
-          x: prev.x + dx / prev.scale,
-          y: prev.y + dy / prev.scale
+          x: prev.x + dx / (prev.scale*100),
+          y: prev.y + dy / (prev.scale*100)
         }));
       }
     };
@@ -269,117 +272,124 @@ export function WhiteboardCanvas({ className = '' }: WhiteboardCanvasProps) {
   };
 
   // Drawing functions
-  const drawGrid = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
-    const gridSize = 50 * viewport.scale; // 1 kratka = 50px
+const drawGrid = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
+  const gridSize = 50 * viewport.scale; // 1 kratka = 50px
+  
+  // === NAJPIERW SIATKA (w tle) ===
+  ctx.strokeStyle = 'rgba(200, 200, 200, 0.3)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  
+  // Oblicz zakres widocznych kratek w światowych współrzędnych
+  // UWAGA: Teraz 100px = 1 jednostka (czyli 2 kratki = 1 jednostka)
+  const startX = Math.floor((viewport.x - width / (2 * viewport.scale)) / 0.5) * 0.5;
+  const endX = Math.ceil((viewport.x + width / (2 * viewport.scale)) / 0.5) * 0.5;
+  const startY = Math.floor((viewport.y - height / (2 * viewport.scale)) / 0.5) * 0.5;
+  const endY = Math.ceil((viewport.y + height / (2 * viewport.scale)) / 0.5) * 0.5;
+  
+  // Rysuj pionowe linie siatki (co 0.5 jednostki w świecie = co 50px)
+  for (let worldX = startX; worldX <= endX; worldX += 0.5) {
+    const screenPos = transformPoint({ x: worldX, y: 0 });
+    ctx.moveTo(screenPos.x, 0);
+    ctx.lineTo(screenPos.x, height);
+  }
+  
+  // Rysuj poziome linie siatki (co 0.5 jednostki w świecie = co 50px)
+  for (let worldY = startY; worldY <= endY; worldY += 0.5) {
+    const screenPos = transformPoint({ x: 0, y: worldY });
+    ctx.moveTo(0, screenPos.y);
+    ctx.lineTo(width, screenPos.y);
+  }
+  
+  ctx.stroke();
+  
+  // === TERAZ OSIE (na wierzchu siatki, ale WBUDOWANE w kratki) ===
+  const origin = transformPoint({ x: 0, y: 0 });
+  
+  // Oś X (czerwona) - dokładnie na kratce Y=0
+  ctx.strokeStyle = 'rgba(220, 38, 38, 0.7)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, origin.y);
+  ctx.lineTo(width, origin.y);
+  ctx.stroke();
+  
+  // Oś Y (niebieska) - dokładnie na kratce X=0
+  ctx.strokeStyle = 'rgba(37, 99, 235, 0.7)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(origin.x, 0);
+  ctx.lineTo(origin.x, height);
+  ctx.stroke();
+  
+  // === PODZIAŁKA NA OSIACH - CO 1 JEDNOSTKĘ (co 2 kratki = 100px!) ===
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+  ctx.font = `${Math.max(10, 12 * viewport.scale)}px Arial`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  
+  // Podziałka na osi X (co 1 jednostkę)
+  const startXLabel = Math.floor((viewport.x - width / (2 * viewport.scale)));
+  const endXLabel = Math.ceil((viewport.x + width / (2 * viewport.scale)));
+  
+  for (let worldX = startXLabel; worldX <= endXLabel; worldX += 1) {
+    if (worldX === 0) continue; // Pomijamy (0,0)
     
-    // === NAJPIERW SIATKA (w tle) ===
-    ctx.strokeStyle = 'rgba(200, 200, 200, 0.3)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
+    const screenPos = transformPoint({ x: worldX, y: 0 });
     
-    // Oblicz zakres widocznych kratek w światowych współrzędnych
-    const startX = Math.floor((viewport.x - width / (2 * viewport.scale)) / 50) * 50;
-    const endX = Math.ceil((viewport.x + width / (2 * viewport.scale)) / 50) * 50;
-    const startY = Math.floor((viewport.y - height / (2 * viewport.scale)) / 50) * 50;
-    const endY = Math.ceil((viewport.y + height / (2 * viewport.scale)) / 50) * 50;
-    
-    // Rysuj pionowe linie siatki (co 50px w świecie)
-    for (let worldX = startX; worldX <= endX; worldX += 50) {
-      const screenPos = transformPoint({ x: worldX, y: 0 });
-      ctx.moveTo(screenPos.x, 0);
-      ctx.lineTo(screenPos.x, height);
-    }
-    
-    // Rysuj poziome linie siatki (co 50px w świecie)
-    for (let worldY = startY; worldY <= endY; worldY += 50) {
-      const screenPos = transformPoint({ x: 0, y: worldY });
-      ctx.moveTo(0, screenPos.y);
-      ctx.lineTo(width, screenPos.y);
-    }
-    
-    ctx.stroke();
-    
-    // === TERAZ OSIE (na wierzchu siatki, ale WBUDOWANE w kratki) ===
-    const origin = transformPoint({ x: 0, y: 0 });
-    
-    // Oś X (czerwona) - dokładnie na kratce Y=0
-    ctx.strokeStyle = 'rgba(220, 38, 38, 0.7)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(0, origin.y);
-    ctx.lineTo(width, origin.y);
-    ctx.stroke();
-    
-    // Oś Y (niebieska) - dokładnie na kratce X=0
-    ctx.strokeStyle = 'rgba(37, 99, 235, 0.7)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(origin.x, 0);
-    ctx.lineTo(origin.x, height);
-    ctx.stroke();
-    
-    // === PODZIAŁKA NA OSIACH - CO 50px (co 1 kratkę!) ===
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-    ctx.font = `${Math.max(10, 12 * viewport.scale)}px Arial`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    
-    // Podziałka na osi X (co 50px)
-    for (let worldX = startX; worldX <= endX; worldX += 50) {
-      if (worldX === 0) continue; // Pomijamy (0,0)
+    if (screenPos.x >= 0 && screenPos.x <= width) {
+      // Liczba
+      ctx.fillText(worldX.toString(), screenPos.x, origin.y + 8);
       
-      const screenPos = transformPoint({ x: worldX, y: 0 });
-      
-      if (screenPos.x >= 0 && screenPos.x <= width) {
-        // Liczba
-        ctx.fillText(worldX.toString(), screenPos.x, origin.y + 8);
-        
-        // Kreska na osi
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(screenPos.x, origin.y - 6);
-        ctx.lineTo(screenPos.x, origin.y + 6);
-        ctx.stroke();
-      }
+      // Kreska na osi
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(screenPos.x, origin.y - 6);
+      ctx.lineTo(screenPos.x, origin.y + 6);
+      ctx.stroke();
     }
+  }
+  
+  // Podziałka na osi Y (co 1 jednostkę)
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  
+  const startYLabel = Math.floor((viewport.y - height / (2 * viewport.scale)));
+  const endYLabel = Math.ceil((viewport.y + height / (2 * viewport.scale)));
+  
+  for (let worldY = startYLabel; worldY <= endYLabel; worldY += 1) {
+    if (worldY === 0) continue; // Pomijamy (0,0)
     
-    // Podziałka na osi Y (co 50px)
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
+    const screenPos = transformPoint({ x: 0, y: worldY });
     
-    for (let worldY = startY; worldY <= endY; worldY += 50) {
-      if (worldY === 0) continue; // Pomijamy (0,0)
+    if (screenPos.y >= 0 && screenPos.y <= height) {
+      // Liczba (minus bo Y w canvas idzie w dół, a my chcemy normalny układ)
+      ctx.fillText((-worldY).toString(), origin.x + 10, screenPos.y);
       
-      const screenPos = transformPoint({ x: 0, y: worldY });
-      
-      if (screenPos.y >= 0 && screenPos.y <= height) {
-        // Liczba (minus bo Y w canvas idzie w dół, a my chcemy normalny układ)
-        ctx.fillText((-worldY).toString(), origin.x + 10, screenPos.y);
-        
-        // Kreska na osi
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(origin.x - 6, screenPos.y);
-        ctx.lineTo(origin.x + 6, screenPos.y);
-        ctx.stroke();
-      }
+      // Kreska na osi
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(origin.x - 6, screenPos.y);
+      ctx.lineTo(origin.x + 6, screenPos.y);
+      ctx.stroke();
     }
-    
-    // === PUNKT (0,0) - zaznacz go wyraźnie ===
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
-    ctx.beginPath();
-    ctx.arc(origin.x, origin.y, 4, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Etykieta (0,0)
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
-    ctx.font = `${Math.max(12, 14 * viewport.scale)}px Arial`;
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'bottom';
-    ctx.fillText('(0, 0)', origin.x + 8, origin.y - 8);
-  };
+  }
+  
+  // === PUNKT (0,0) - zaznacz go wyraźnie ===
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+  ctx.beginPath();
+  ctx.arc(origin.x, origin.y, 4, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Etykieta (0,0)
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+  ctx.font = `${Math.max(12, 14 * viewport.scale)}px Arial`;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText('(0, 0)', origin.x + 8, origin.y - 8);
+};
 
   const drawPath = (ctx: CanvasRenderingContext2D, path: DrawingPath) => {
     if (path.points.length < 2) return;
@@ -499,7 +509,7 @@ export function WhiteboardCanvas({ className = '' }: WhiteboardCanvasProps) {
     ctx.beginPath();
     
     let started = false;
-    const step = 2 / viewport.scale;
+    const step = 0.02 / viewport.scale;
     
     for (let worldX = -func.xRange; worldX <= func.xRange; worldX += step) {
       try {
@@ -538,31 +548,37 @@ export function WhiteboardCanvas({ className = '' }: WhiteboardCanvasProps) {
     }
   };
 
-  const transformPoint = (point: Point): Point => {
-    const canvas = canvasRef.current;
-    if (!canvas) return point;
-    
-    const centerX = canvas.width / (window.devicePixelRatio || 1) / 2;
-    const centerY = canvas.height / (window.devicePixelRatio || 1) / 2;
-    
-    return {
-      x: (point.x - viewport.x) * viewport.scale + centerX,
-      y: (point.y - viewport.y) * viewport.scale + centerY
-    };
+const transformPoint = (point: Point): Point => {
+  const canvas = canvasRef.current;
+  if (!canvas) return point;
+  
+  const centerX = canvas.width / (window.devicePixelRatio || 1) / 2;
+  const centerY = canvas.height / (window.devicePixelRatio || 1) / 2;
+  
+  // NOWA SKALA: 100px = 1 jednostka matematyczna
+  const scale = viewport.scale * 100;
+  
+  return {
+    x: (point.x - viewport.x) * scale + centerX,
+    y: (point.y - viewport.y) * scale + centerY
   };
+};
 
-  const inverseTransformPoint = (point: Point): Point => {
-    const canvas = canvasRef.current;
-    if (!canvas) return point;
-    
-    const centerX = canvas.width / (window.devicePixelRatio || 1) / 2;
-    const centerY = canvas.height / (window.devicePixelRatio || 1) / 2;
-    
-    return {
-      x: (point.x - centerX) / viewport.scale + viewport.x,
-      y: (point.y - centerY) / viewport.scale + viewport.y
-    };
+const inverseTransformPoint = (point: Point): Point => {
+  const canvas = canvasRef.current;
+  if (!canvas) return point;
+  
+  const centerX = canvas.width / (window.devicePixelRatio || 1) / 2;
+  const centerY = canvas.height / (window.devicePixelRatio || 1) / 2;
+  
+  // NOWA SKALA: 100px = 1 jednostka matematyczna
+  const scale = viewport.scale * 100;
+  
+  return {
+    x: (point.x - centerX) / scale + viewport.x,
+    y: (point.y - centerY) / scale + viewport.y
   };
+};
 
   const redrawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -719,10 +735,13 @@ export function WhiteboardCanvas({ className = '' }: WhiteboardCanvasProps) {
       const dx = screenX - lastPanPoint.x;
       const dy = screenY - lastPanPoint.y;
       
+      // WOLNIEJSZE przesuwanie myszką (mnożymy przez mniejszą wartość)
+      const mousePanSpeed = 1; // Dostosuj tę wartość (0.1 = bardzo wolno, 1.0 = jak było)
+      
       const newViewport = constrainViewport({
         ...viewport,
-        x: viewport.x - dx / viewport.scale,
-        y: viewport.y - dy / viewport.scale
+        x: viewport.x - (dx * mousePanSpeed) / (viewport.scale * 100),
+        y: viewport.y - (dy * mousePanSpeed) / (viewport.scale * 100)
       });
       
       setViewport(newViewport);
