@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import Toolbar, { Tool, ShapeType, ZoomControls } from '../whiteboard-components/Toolbar';
+import Toolbar, { Tool, ShapeType, ZoomControls } from '../toolbar/Toolbar';
 
 // Import wszystkich modułów
 import {

@@ -89,16 +89,20 @@ export const verifyEmail = async (verifyData: VerifyEmailData): Promise<AuthResp
  * Logowanie użytkownika
  */
 export const loginUser = async (loginData: LoginData): Promise<AuthResponse> => {
-  const response = await fetch(`${API_BASE_URL}/api/login`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(loginData),
-  });
-  
-  return handleResponse(response);
-};
+     console.log('API_BASE_URL:', API_BASE_URL);
+     console.log('Full URL:', `${API_BASE_URL}/api/login`);
+     console.log('Login data:', loginData);
+     
+     const response = await fetch(`${API_BASE_URL}/api/login`, {
+       method: 'POST',
+       headers: {
+         'Content-Type': 'application/json',
+       },
+       body: JSON.stringify(loginData),
+     });
+     
+     return handleResponse(response);
+   };
 
 /**
  * Ponowne wysłanie kodu weryfikacyjnego
